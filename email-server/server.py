@@ -8,40 +8,36 @@ Start with:  python server.py
 
 import smtplib
 import json
+import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
+# ── Load credentials from email-server/.env (never committed to git) ──────────
+_env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+if os.path.exists(_env_file):
+    with open(_env_file) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith('#') and '=' in _line:
+                _k, _v = _line.split('=', 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+
 # ── Config ────────────────────────────────────────────────────────────────────
-# Use a Gmail App Password (NOT your normal Gmail password).
-# How to get one:
+# Credentials are read from email-server/.env — copy .env.example to .env
+# and fill in your Gmail address and App Password.
+#
+# How to get a Gmail App Password:
 #   1. Go to myaccount.google.com → Security → 2-Step Verification (enable it)
 #   2. Go to myaccount.google.com → Security → App passwords
 #   3. Create one called "LAN Catering", copy the 16-char password
-#   4. Paste it below
+#   4. Paste it into email-server/.env
 
-# ── Pick one provider and fill in your credentials ───────────────────────────
-
-# Option A: Gmail — App Password from myaccount.google.com → Security → App passwords
 SMTP_HOST     = "smtp.gmail.com"
 SMTP_PORT     = 587
-SMTP_USER     = "example"  # ← your Gmail address
-SMTP_PASSWORD = "xxxx xxxx xxxx xxxx"   # ← paste your 16-char App Password here
-
-# Option B: Outlook / Hotmail — just your normal email + password, no setup needed
-# SMTP_HOST     = "smtp-mail.outlook.com"
-# SMTP_PORT     = 587```
-# SMTP_USER     = "your@outlook.com"
-# SMTP_PASSWORD = "your-password"
-
-# Option C: Brevo (free, 300 emails/day) — sign up at brevo.com → SMTP & API → SMTP
-# SMTP_HOST     = "smtp-relay.brevo.com"
-# SMTP_PORT     = 587
-# SMTP_USER     = "your@email.com"      # ← the email you signed up with
-# SMTP_PASSWORD = "your-brevo-smtp-key" # ← the SMTP key from Brevo dashboard
-
+SMTP_USER     = os.environ.get("SMTP_USER", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 FROM_NAME     = "LAN Party Catering"
-
 PORT = 5001
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -93,7 +89,6 @@ GG! 🎮
 
 class Handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
-        # CORS preflight
         self.send_response(200)
         self._cors()
         self.end_headers()
@@ -134,15 +129,14 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
 
     def log_message(self, fmt, *args):
-        # Cleaner console output
         print(f"  {self.address_string()} — {fmt % args}")
 
 
 if __name__ == "__main__":
-    # Quick config sanity check
-    if SMTP_USER in ("your@gmail.com", "your@outlook.com", "your@email.com") or \
-       SMTP_PASSWORD in ("xxxx xxxx xxxx xxxx", "your-password", "your-brevo-smtp-key"):
-        print("⚠️  Edit SMTP_USER and SMTP_PASSWORD in server.py before starting!")
+    if not SMTP_USER or not SMTP_PASSWORD:
+        print("⚠️  No credentials found.")
+        print("   Copy email-server/.env.example to email-server/.env")
+        print("   and fill in your Gmail address and App Password.")
         raise SystemExit(1)
 
     print(f"📧 Email server running on http://localhost:{PORT}")
