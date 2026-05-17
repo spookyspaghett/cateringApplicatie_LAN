@@ -2,12 +2,13 @@
 -- This file runs automatically when the Docker volume is first created.
 
 CREATE TABLE IF NOT EXISTS attendees (
-  id           CHAR(36)     NOT NULL PRIMARY KEY,
-  name         VARCHAR(255) NOT NULL,
-  email        VARCHAR(255) NOT NULL UNIQUE,
-  dietary_restrictions JSON NOT NULL DEFAULT ('[]'),
+  id            CHAR(36)     NOT NULL PRIMARY KEY,
+  name          VARCHAR(255) NOT NULL,
+  email         VARCHAR(255) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  dietary_restrictions JSON  NOT NULL DEFAULT ('[]'),
   payment_status ENUM('unpaid','paid','comped') NOT NULL DEFAULT 'unpaid',
-  created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS menu_items (

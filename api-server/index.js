@@ -7,6 +7,7 @@
 import express       from 'express'
 import mysql         from 'mysql2/promise'
 import nodemailer    from 'nodemailer'
+import bcrypt        from 'bcryptjs'
 import { randomUUID }      from 'crypto'
 import { fileURLToPath }   from 'url'
 import { dirname, join }   from 'path'
@@ -90,7 +91,9 @@ function toISO(val) {
 }
 
 function mapAttendee(r) {
-  return { ...r, dietary_restrictions: parseJson(r.dietary_restrictions), created_at: toISO(r.created_at) }
+  // Strip password_hash so it never leaks out of the API
+  const { password_hash, ...rest } = r
+  return { ...rest, dietary_restrictions: parseJson(rest.dietary_restrictions), created_at: toISO(rest.created_at) }
 }
 
 function mapMenuItem(r) {
@@ -233,14 +236,27 @@ app.get('/api/attendees', async (req, res, next) => {
   } catch (err) { next(err) }
 })
 
-app.get('/api/attendees/by-email/:email', async (req, res, next) => {
+// Verify email + password. Returns the attendee (without password hash) on success.
+app.post('/api/attendees/login', async (req, res, next) => {
   try {
+    const { email, password } = req.body
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password required' })
+    }
     const db = await getPool()
     const [rows] = await db.query(
       'SELECT * FROM attendees WHERE LOWER(email) = ?',
-      [req.params.email.toLowerCase()]
+      [String(email).toLowerCase()]
     )
-    if (rows.length === 0) return res.status(404).json({ error: 'Not found' })
+    // Same generic error for "no user" and "wrong password" so attackers can't
+    // tell which one is wrong (avoids user enumeration).
+    if (rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid email or password' })
+    }
+    const ok = await bcrypt.compare(password, rows[0].password_hash)
+    if (!ok) {
+      return res.status(401).json({ error: 'Invalid email or password' })
+    }
     res.json(mapAttendee(rows[0]))
   } catch (err) { next(err) }
 })
@@ -259,12 +275,16 @@ app.get('/api/attendees/:id/orders', async (req, res, next) => {
 
 app.post('/api/attendees', async (req, res, next) => {
   try {
-    const { name, email, dietary_restrictions = [] } = req.body
+    const { name, email, password, dietary_restrictions = [] } = req.body
+    if (!password || password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters.' })
+    }
     const db = await getPool()
     const id = randomUUID()
+    const password_hash = await bcrypt.hash(password, 10)
     await db.query(
-      'INSERT INTO attendees (id, name, email, dietary_restrictions) VALUES (?, ?, ?, ?)',
-      [id, name, email, JSON.stringify(dietary_restrictions)]
+      'INSERT INTO attendees (id, name, email, password_hash, dietary_restrictions) VALUES (?, ?, ?, ?, ?)',
+      [id, name, email, password_hash, JSON.stringify(dietary_restrictions)]
     )
     const [rows] = await db.query('SELECT * FROM attendees WHERE id = ?', [id])
     res.status(201).json(mapAttendee(rows[0]))

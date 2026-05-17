@@ -11,7 +11,11 @@ export function useAttendees() {
 
 export function useRegisterAttendee() {
   const qc = useQueryClient()
-  return useMutation<Attendee, Error, { name: string; email: string; dietary_restrictions: string[] }>({
+  return useMutation<
+    Attendee,
+    Error,
+    { name: string; email: string; password: string; dietary_restrictions: string[] }
+  >({
     mutationFn: async (values) => attendeeStore.insert(values),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['attendees'] }),
   })

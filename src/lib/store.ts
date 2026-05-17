@@ -28,14 +28,19 @@ export const attendeeStore = {
   list: () =>
     request<Attendee[]>('/attendees'),
 
-  findByEmail: async (email: string): Promise<Attendee | null> => {
-    const res = await fetch(`${API}/attendees/by-email/${encodeURIComponent(email)}`)
-    if (res.status === 404) return null
+  // Verifies email + password. Returns the attendee on success, null on bad creds.
+  login: async (email: string, password: string): Promise<Attendee | null> => {
+    const res = await fetch(`${API}/attendees/login`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email, password }),
+    })
+    if (res.status === 401) return null
     if (!res.ok) throw new Error(`Request failed: ${res.status}`)
     return res.json()
   },
 
-  insert: (values: { name: string; email: string; dietary_restrictions: string[] }) =>
+  insert: (values: { name: string; email: string; password: string; dietary_restrictions: string[] }) =>
     request<Attendee>('/attendees', { method: 'POST', body: JSON.stringify(values) }),
 
   updatePayment: (id: string, payment_status: Attendee['payment_status']) =>

@@ -10,10 +10,20 @@ const DIETARY_OPTIONS = [
   'Nut-free', 'Halal', 'Kosher',
 ]
 
+const passwordSchema = z.string()
+  .min(8,            'At least 8 characters')
+  .regex(/[A-Z]/,    'Must contain an uppercase letter')
+  .regex(/[^A-Za-z0-9]/, 'Must contain a special character (e.g. !@#$%)')
+
 const schema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Enter a valid email'),
+  name:                 z.string().min(2, 'Name must be at least 2 characters'),
+  email:                z.string().email('Enter a valid email'),
+  password:             passwordSchema,
+  confirm_password:     z.string(),
   dietary_restrictions: z.array(z.string()),
+}).refine((d) => d.password === d.confirm_password, {
+  message: 'Passwords do not match',
+  path:    ['confirm_password'],
 })
 
 type FormValues = z.infer<typeof schema>
@@ -34,11 +44,12 @@ export default function Register() {
 
   async function onSubmit(values: FormValues) {
     try {
-      const attendee = await mutateAsync(values) as { id: string }
+      // Don't send confirm_password to the server
+      const { confirm_password, ...payload } = values
+      const attendee = await mutateAsync(payload) as { id: string }
       navigate(`/menu?attendee=${attendee.id}`)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Something went wrong'
-      // Give a friendlier message with a login link for duplicate emails
       if (msg.toLowerCase().includes('already registered')) {
         setError('root', { message: '§ALREADY_REGISTERED§' })
       } else {
@@ -65,6 +76,36 @@ export default function Register() {
           <label className="label">Email</label>
           <input className="input" type="email" placeholder="ada@example.com" {...register('email')} />
           {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
+        </div>
+
+        <div>
+          <label className="label">Password</label>
+          <input
+            className="input"
+            type="password"
+            autoComplete="new-password"
+            placeholder="At least 8 chars, 1 uppercase, 1 special"
+            {...register('password')}
+          />
+          {errors.password
+            ? <p className="text-red-400 text-xs mt-1">{errors.password.message}</p>
+            : <p className="text-gray-500 text-xs mt-1">
+                At least 8 characters, one uppercase letter, one special character.
+              </p>
+          }
+        </div>
+
+        <div>
+          <label className="label">Confirm password</label>
+          <input
+            className="input"
+            type="password"
+            autoComplete="new-password"
+            {...register('confirm_password')}
+          />
+          {errors.confirm_password && (
+            <p className="text-red-400 text-xs mt-1">{errors.confirm_password.message}</p>
+          )}
         </div>
 
         <div>

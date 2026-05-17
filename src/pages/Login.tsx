@@ -7,6 +7,7 @@ import type { Attendee, Order } from '../lib/types'
 export default function AttendeeLogin() {
   const navigate = useNavigate()
   const [email, setEmail]       = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
   const [attendee, setAttendee] = useState<Attendee | null>(null)
@@ -18,10 +19,10 @@ export default function AttendeeLogin() {
     setLoading(true)
 
     try {
-      const found = await attendeeStore.findByEmail(email.trim())
+      const found = await attendeeStore.login(email.trim(), password)
 
       if (!found) {
-        setError("We couldn't find anyone registered with that email.")
+        setError('Invalid email or password.')
         return
       }
 
@@ -40,7 +41,7 @@ export default function AttendeeLogin() {
     }
   }
 
-  // ── Choice screen shown after email lookup ──────────────────
+  // ── Choice screen shown after a successful login ────────────
   if (attendee && orders.length > 0) {
     return (
       <div className="max-w-md mx-auto">
@@ -96,7 +97,7 @@ export default function AttendeeLogin() {
         </div>
 
         <button
-          onClick={() => { setAttendee(null); setOrders([]); setEmail('') }}
+          onClick={() => { setAttendee(null); setOrders([]); setEmail(''); setPassword('') }}
           className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
         >
           ← Not you?
@@ -105,12 +106,12 @@ export default function AttendeeLogin() {
     )
   }
 
-  // ── Email form ───────────────────────────────────────────────
+  // ── Email + password form ────────────────────────────────────
   return (
     <div className="max-w-md mx-auto">
       <h1 className="text-2xl font-bold text-white mb-2">Already registered?</h1>
       <p className="text-gray-400 mb-8">
-        Enter your email to view your order or place a new one.
+        Sign in with your email and password.
       </p>
 
       <form onSubmit={handleSubmit} className="card flex flex-col gap-5">
@@ -127,10 +128,22 @@ export default function AttendeeLogin() {
           />
         </div>
 
+        <div>
+          <label className="label">Password</label>
+          <input
+            className="input"
+            type="password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => { setPassword(e.target.value); setError('') }}
+          />
+        </div>
+
         {error && <ErrorMessage message={error} />}
 
-        <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? 'Looking up…' : 'Continue →'}
+        <button type="submit" className="btn-primary" disabled={loading || !email || !password}>
+          {loading ? 'Signing in…' : 'Sign in →'}
         </button>
 
         <p className="text-center text-sm text-gray-500">
