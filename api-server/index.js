@@ -10,9 +10,23 @@ import nodemailer    from 'nodemailer'
 import { randomUUID }      from 'crypto'
 import { fileURLToPath }   from 'url'
 import { dirname, join }   from 'path'
-import { existsSync }      from 'fs'
+import { existsSync, readFileSync } from 'fs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
+// ── Load credentials from email-server/.env (gitignored, never committed) ────
+const _envFile = join(__dirname, '../email-server/.env')
+if (existsSync(_envFile)) {
+  readFileSync(_envFile, 'utf-8').split('\n').forEach(line => {
+    const trimmed = line.trim()
+    if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+      const idx = trimmed.indexOf('=')
+      const key = trimmed.slice(0, idx).trim()
+      const val = trimmed.slice(idx + 1).trim()
+      if (!process.env[key]) process.env[key] = val
+    }
+  })
+}
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -20,6 +34,7 @@ const PORT = process.env.PORT || 3001
 
 const DB_CONFIG = {
   host:               process.env.DB_HOST || 'localhost',
+  port:               Number(process.env.DB_PORT) || 3307,
   user:               process.env.DB_USER || 'catering',
   password:           process.env.DB_PASS || 'catering123',
   database:           process.env.DB_NAME || 'lan_catering',
@@ -27,12 +42,12 @@ const DB_CONFIG = {
   connectionLimit:    10,
 }
 
-// ── Fill in your Gmail App Password here (same as the old server.py) ─────────
+// Credentials are loaded from email-server/.env automatically
 const SMTP = {
   host:     'smtp.gmail.com',
   port:     587,
-  user:     'your@gmail.com',       // ← your Gmail address
-  password: 'YOUR_APP_PASSWORD_HERE',        // ← your 16-char App Password
+  user:     process.env.SMTP_USER     || '',
+  password: process.env.SMTP_PASSWORD || '',
   fromName: 'LAN Party Catering',
 }
 

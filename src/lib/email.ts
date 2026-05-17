@@ -1,8 +1,6 @@
-// Local Python email server — run email-server/server.py before sending emails.
-const EMAIL_SERVER = 'http://localhost:5001/send-email'
+// Email is sent by the Express server — no separate Python process needed.
+// Relative URL works because the frontend is served by the same Express server.
 
-// emailConfigured is true when the server is reachable.
-// We optimistically assume it's up; errors surface in the UI.
 export const emailConfigured = true
 
 export async function sendOrderReadyEmail(params: {
@@ -12,7 +10,7 @@ export async function sendOrderReadyEmail(params: {
   items:    string
   total:    string
 }): Promise<void> {
-  const res = await fetch(EMAIL_SERVER, {
+  const res = await fetch('/api/send-email', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify(params),

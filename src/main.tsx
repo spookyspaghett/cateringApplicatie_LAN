@@ -3,15 +3,12 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider } from './context/AuthContext'
-import { seedIfEmpty } from './lib/store'
 import App from './App'
 import './index.css'
 
-seedIfEmpty()
-
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 0, retry: 0 },
+    queries: { staleTime: 0, retry: 1 },
   },
 })
 

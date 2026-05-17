@@ -6,33 +6,37 @@ import type { Attendee, Order } from '../lib/types'
 
 export default function AttendeeLogin() {
   const navigate = useNavigate()
-  const [email, setEmail]         = useState('')
-  const [error, setError]         = useState('')
-  const [attendee, setAttendee]   = useState<Attendee | null>(null)
-  const [orders, setOrders]       = useState<Order[]>([])
+  const [email, setEmail]       = useState('')
+  const [error, setError]       = useState('')
+  const [loading, setLoading]   = useState(false)
+  const [attendee, setAttendee] = useState<Attendee | null>(null)
+  const [orders, setOrders]     = useState<Order[]>([])
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setLoading(true)
 
-    const found = attendeeStore.list().find(
-      (a) => a.email.toLowerCase() === email.trim().toLowerCase()
-    )
+    try {
+      const found = await attendeeStore.findByEmail(email.trim())
 
-    if (!found) {
-      setError("We couldn't find anyone registered with that email.")
-      return
-    }
+      if (!found) {
+        setError("We couldn't find anyone registered with that email.")
+        return
+      }
 
-    const myOrders = orderStore.list()
-      .filter((o) => o.attendee_id === found.id)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      const myOrders = await orderStore.listForAttendee(found.id)
 
-    setAttendee(found)
-    setOrders(myOrders)
+      setAttendee(found)
+      setOrders(myOrders)
 
-    if (myOrders.length === 0) {
-      navigate(`/menu?attendee=${found.id}`)
+      if (myOrders.length === 0) {
+        navigate(`/menu?attendee=${found.id}`)
+      }
+    } catch {
+      setError('Something went wrong. Is the server running?')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -125,8 +129,8 @@ export default function AttendeeLogin() {
 
         {error && <ErrorMessage message={error} />}
 
-        <button type="submit" className="btn-primary">
-          Continue →
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? 'Looking up…' : 'Continue →'}
         </button>
 
         <p className="text-center text-sm text-gray-500">
